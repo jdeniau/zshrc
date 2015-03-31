@@ -1,0 +1,153 @@
+function clone {
+    # project
+     if [ -z $1 ]
+     then
+        echo 'project name not set'
+        return 1
+    fi
+
+
+    if [[ $1 == */* ]]
+    then
+        project=$1
+    fi
+
+    if [ -z $2 ]
+    then
+        dir=${project#*/}
+        finalDir=~/code/$dir
+    else
+        finalDir=$2
+    fi
+
+    #directory
+    if [[ ! -d ~/code/ ]]
+    then
+        mkdir -p ~/code/
+    fi
+    
+    if [[ -d $finalDir ]]
+    then
+        echo $finalDir' is not empty'
+        return 1
+    fi
+
+    if [ $2 = "github" ]
+    then
+        server="github.com"
+    else
+        server="bitbucket.org"
+    fi
+
+     git clone git@$server:$project.git $finalDir;
+     cd $finalDir;
+}
+
+function mkcd {
+    mkdir $1;
+    cd $1;
+}
+
+function mdown {
+    markdown $1 | lynx -stdin
+}
+
+function statusall {
+    if [ -z $1 ]
+    then
+        workingdir=~/code
+    else
+        workingdir=$1
+    fi
+
+    for i in $workingdir/*;
+    do
+        curdir=`pwd`
+        if [ -d "$i" ];
+        then
+            cd $i
+            echo "\n${fg[cyan]}===== ${fg[white]}$(basename "$i")${fg[cyan]} =====${reset_color}"
+
+            if [ -d .git ]
+            then
+                git status -s
+            else
+                echo "${fg[green]}Not a Git Repository${reset_color}"
+            fi
+        fi
+        cd $curdir
+    done
+}
+
+function git-branch-delete {
+    if [ ! -d .git ]
+    then
+        echo "${fg[green]}Not a Git Repository${reset_color}"
+        return
+    fi  
+
+    if [ $1 ]
+    then
+        currentbranch=$1
+    else
+        currentbranch=`git branch | grep "^* " | sed "s/* //"`
+    fi
+
+    if [ "$currentbranch" = "master" ]
+    then
+        echo "${fg[green]}You can not delete branch master${reset_color}"
+        return
+    fi  
+
+    git checkout master
+    git pull
+    git branch -d $currentbranch
+    git branch -dr origin/$currentbranch
+}
+
+function git-after-rebase-merge-master {
+    if [ ! -d .git ]
+    then
+        echo "${fg[green]}Not a Git Repository${reset_color}"
+        return
+    fi  
+
+    if [ $1 ]
+    then
+        currentbranch=$1
+    else
+        currentbranch=`git branch | grep "^* " | sed "s/* //"`
+    fi
+
+    if [ "$currentbranch" = "master" ]
+    then
+        echo "${fg[green]}You can not rebase master branch${reset_color}"
+        return
+    fi  
+
+    git push -f
+    git checkout master
+    git merge origin/master
+    git merge --no-ff $currentbranch
+}
+
+function custom-acl {
+    if [ -z $1 ]
+    then
+        echo "You have to specify a file or a directory"
+        return 0
+    else
+        dir=$1
+    fi
+
+    sudo setfacl -R -m m:rwx -m u:www-data:rwx -m g:users:rwx  $1
+    sudo setfacl -dR -m m:rwx -m u:www-data:rwx -m g:users:rwx $1
+}
+
+
+alias ccat='pygmentize -O style=monokai -f console256 -g'
+
+
+# Directory containing cached python packages downloaded by pip
+export PIP_DOWNLOAD_CACHE=$HOME/.pip/download_cache
+
